@@ -177,18 +177,31 @@ QUESTION_BANK = [
 # 3. GAME LOGIC
 # ==========================================
 
+def get_shuffled_options(question_data):
+    """Helper to shuffle options and ensure they stay shuffled in state"""
+    options = question_data['options']
+    return random.sample(options, len(options))
+
 # Initialize Session State
 if 'quiz_session' not in st.session_state:
     st.session_state.quiz_session = random.sample(QUESTION_BANK, 10)
     st.session_state.score = 0
     st.session_state.current_index = 0
     st.session_state.game_over = False
+    
+    # FIX: Initialize the first set of options and store them
+    first_q = st.session_state.quiz_session[0]
+    st.session_state.current_options = get_shuffled_options(first_q)
 
 def restart_game():
     st.session_state.quiz_session = random.sample(QUESTION_BANK, 10)
     st.session_state.score = 0
     st.session_state.current_index = 0
     st.session_state.game_over = False
+    
+    # FIX: Reset the options for the new first question
+    first_q = st.session_state.quiz_session[0]
+    st.session_state.current_options = get_shuffled_options(first_q)
     st.rerun()
 
 # ==========================================
@@ -218,14 +231,13 @@ if not st.session_state.game_over:
     # Display Question
     st.markdown(f'<div class="question-box">{q_data["q"]}</div>', unsafe_allow_html=True)
     
-    # Options
-    options = q_data['options']
-    # Shuffle options randomly
-    shuffled_options = random.sample(options, len(options))
+    # FIX: Use the stored options from session_state, do NOT shuffle here
+    current_options = st.session_state.current_options
     
     col1, col2 = st.columns(2)
-    for i, option in enumerate(shuffled_options):
+    for i, option in enumerate(current_options):
         col = col1 if i % 2 == 0 else col2
+        # Using a unique key for each button ensures stability
         if col.button(option, use_container_width=True, key=f"q{idx}_opt{i}"):
             
             # Check Answer
@@ -239,6 +251,11 @@ if not st.session_state.game_over:
             # Next Question Logic
             if st.session_state.current_index + 1 < 10:
                 st.session_state.current_index += 1
+                
+                # FIX: Prepare shuffled options for the NEXT question before rerunning
+                next_q = st.session_state.quiz_session[st.session_state.current_index]
+                st.session_state.current_options = get_shuffled_options(next_q)
+                
                 st.rerun()
             else:
                 st.session_state.game_over = True
