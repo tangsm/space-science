@@ -103,6 +103,15 @@ st.markdown(
         text-align: center; 
         font-family: 'Quicksand', sans-serif;
     }
+    
+    /* --- EXPANDER (REVIEW SECTION) --- */
+    .streamlit-expanderHeader {
+        font-family: 'Quicksand', sans-serif;
+        font-weight: bold;
+        color: #002C59;
+        background-color: #A5F2F3;
+        border-radius: 10px;
+    }
     </style>
     """,
     unsafe_allow_html=True
@@ -188,8 +197,9 @@ if 'quiz_session' not in st.session_state:
     st.session_state.score = 0
     st.session_state.current_index = 0
     st.session_state.game_over = False
+    st.session_state.wrong_answers = [] # Initialize list for wrong answers
     
-    # FIX: Initialize the first set of options and store them
+    # Initialize the first set of options
     first_q = st.session_state.quiz_session[0]
     st.session_state.current_options = get_shuffled_options(first_q)
 
@@ -198,8 +208,9 @@ def restart_game():
     st.session_state.score = 0
     st.session_state.current_index = 0
     st.session_state.game_over = False
+    st.session_state.wrong_answers = [] # Reset wrong answers
     
-    # FIX: Reset the options for the new first question
+    # Reset the options for the new first question
     first_q = st.session_state.quiz_session[0]
     st.session_state.current_options = get_shuffled_options(first_q)
     st.rerun()
@@ -231,13 +242,12 @@ if not st.session_state.game_over:
     # Display Question
     st.markdown(f'<div class="question-box">{q_data["q"]}</div>', unsafe_allow_html=True)
     
-    # FIX: Use the stored options from session_state, do NOT shuffle here
+    # Use the stored options from session_state
     current_options = st.session_state.current_options
     
     col1, col2 = st.columns(2)
     for i, option in enumerate(current_options):
         col = col1 if i % 2 == 0 else col2
-        # Using a unique key for each button ensures stability
         if col.button(option, use_container_width=True, key=f"q{idx}_opt{i}"):
             
             # Check Answer
@@ -246,13 +256,20 @@ if not st.session_state.game_over:
                 st.toast(f"🌟 Correct! {q_data['info']}", icon="❄️")
             else:
                 st.toast(f"🧊 Oops! The answer was {q_data['a']}.", icon="☃️")
-                time.sleep(1) # Small pause to see the result
+                # Record Wrong Answer
+                st.session_state.wrong_answers.append({
+                    "question": q_data['q'],
+                    "your_answer": option,
+                    "correct_answer": q_data['a'],
+                    "explanation": q_data['info']
+                })
+                time.sleep(1) 
             
             # Next Question Logic
             if st.session_state.current_index + 1 < 10:
                 st.session_state.current_index += 1
                 
-                # FIX: Prepare shuffled options for the NEXT question before rerunning
+                # Prepare shuffled options for the NEXT question
                 next_q = st.session_state.quiz_session[st.session_state.current_index]
                 st.session_state.current_options = get_shuffled_options(next_q)
                 
@@ -289,6 +306,17 @@ else:
         """, 
         unsafe_allow_html=True
     )
+    
+    # --- SHOW WRONG ANSWERS LINK ---
+    if len(st.session_state.wrong_answers) > 0:
+        st.write("")
+        with st.expander("❄️ Click here to see what you missed!"):
+            for item in st.session_state.wrong_answers:
+                st.markdown(f"**❓ Question:** {item['question']}")
+                st.markdown(f"❌ **You said:** {item['your_answer']}")
+                st.markdown(f"✅ **Correct Answer:** {item['correct_answer']}")
+                st.caption(f"💡 *{item['explanation']}*")
+                st.markdown("---")
     
     st.write("")
     if st.button("🚀 Blast Off Again (New Questions)", type="primary", use_container_width=True):
